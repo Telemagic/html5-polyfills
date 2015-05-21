@@ -8,17 +8,29 @@ var EventSource = function (url) {
   var eventsource = this,  
       interval = 500, // polling interval  
       lastEventId = null,
-      cache = '';
+      cache = '',
+      username,
+      password;
 
   if (!url || typeof url != 'string') {
     throw new SyntaxError('Not enough arguments');
+  }
+
+  function fetchUsernameAndPasswordFromURL() {
+    var match = /^(.*?\/\/)(\S+):(\S+)@(.*?)$/.exec(eventsource.URL);
+    if (match) {
+      eventsource.URL = match[1] + match[4];
+      username = match[2];
+      password = match[3];
+    }
   }
 
   this.URL = url;
   this.readyState = this.CONNECTING;
   this._pollTimer = null;
   this._xhr = null;
-  
+  fetchUsernameAndPasswordFromURL();
+
   function pollAgain(interval) {
     eventsource._pollTimer = setTimeout(function () {
       poll.call(eventsource);
@@ -31,7 +43,11 @@ var EventSource = function (url) {
 
       // NOTE: IE7 and upwards support
       var xhr = new XMLHttpRequest();
-      xhr.open('GET', eventsource.URL, true);
+      if (username && password) {
+        xhr.open('GET', eventsource.URL, true, username, password);
+      } else {
+        xhr.open('GET', eventsource.URL, true);
+      }
       xhr.setRequestHeader('Accept', 'text/event-stream');
       xhr.setRequestHeader('Cache-Control', 'no-cache');
       // we must make use of this on the server side if we're working with Android - because they don't trigger 
